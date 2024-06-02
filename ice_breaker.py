@@ -1,12 +1,13 @@
+from typing import Tuple
 from langchain.prompts.prompt import PromptTemplate
 from langchain_openai import ChatOpenAI
 from third_parties.linkedin import scrape_linkedin_profile
 from agents.linkedin_lookup_agent import lookup
-from output_parser import summary_parser
+from output_parser import Summary, summary_parser
 
-def ice_break_with(name:str):
+def ice_break_with(name:str)->Tuple[Summary,str]:
     summary_template = """
-    Given the LinkedIn information {information} about a person, I want you to create:
+    given the information about a person from linkedin {information} I want you to create:
     1. A short summary
     2. Two interesting facts about them
     \n{format_instruction}
@@ -17,18 +18,18 @@ def ice_break_with(name:str):
         template=summary_template
     )
 
+    linkedin_profile_url = lookup(name=name)
+    linkedin_info = scrape_linkedin_profile(
+        linkedin_profile_url,True
+    )
+
     llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo")
 
     chain = summary_prompt_template | llm | summary_parser
 
-    linkedin_profile_url = lookup(name=name)
-    linkedin_info = scrape_linkedin_profile(
-        linkedin_profile_url, True
-    )
-
     res = chain.invoke(input={"information": linkedin_info})
 
-    print(res)
+    return res,linkedin_info.get("profile_pic_url")
 
 if __name__ == "__main__":
     ice_break_with("Aaron Ogenrwot")
